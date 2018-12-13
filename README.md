@@ -10,9 +10,9 @@ However, I hit a snag when dealing with files > 5GB because the pre-signed URL o
 
 ### Components used in this demo
 
-Frontend Server: React (Next.js)
-Backend Server: Node.js (Express), using the AWS JS SDK
-Storage Server: Minio (but this can easily be switched out to AWS S3)
+* Frontend Server: React (Next.js)
+* Backend Server: Node.js (Express), using the AWS JS SDK
+* Storage Server: Minio (but this can easily be switched out to AWS S3)
 
 ### How to run
 
