@@ -62,7 +62,7 @@ export default class Index extends Component {
 // of 10MB and does the following:
 // (1) call the backend server for a presigned url for each part,
 // (2) uploads them, and
-// (3) upon completion of all responses, returns an array of multipart data.
+// (3) upon completion of all responses, sends a completeMultipartUpload call to the backend server.
 //
 // Note: the AWS SDK can only split one file into 10,000 separate uploads.
 // This means that, each uploaded part being 10MB, each file has a max size of 
@@ -75,7 +75,7 @@ export default class Index extends Component {
       const FILE_CHUNK_SIZE = 10000000 // 10MB
       const fileSize = this.state.selectedFile.size
       const NUM_CHUNKS = Math.round(fileSize / FILE_CHUNK_SIZE) + 1
-      let uploadPartsArray = []
+      let promisesArray = []
       let start, end, blob
 
       for (let index = 1; index < NUM_CHUNKS + 1; index++) {
@@ -96,14 +96,27 @@ export default class Index extends Component {
         console.log('   Presigned URL ' + index + ': ' + presignedUrl + ' filetype ' + this.state.selectedFile.type)
 
         // (2) Puts each file part into the storage server
-        let uploadResp = await axios.put(
+        let uploadResp = axios.put(
           presignedUrl,
           blob,
           { headers: { 'Content-Type': this.state.selectedFile.type } }
         )
-        console.log('   Upload no ' + index + '; Etag: ' + uploadResp.headers.etag)
-        uploadPartsArray.push({ETag: uploadResp.headers.etag, PartNumber: index})
+        // console.log('   Upload no ' + index + '; Etag: ' + uploadResp.headers.etag)
+        promisesArray.push(uploadResp)
       }
+
+      let resolvedArray = await Promise.all(promisesArray)
+      console.log(resolvedArray, ' resolvedAr')
+
+      let uploadPartsArray = []
+      resolvedArray.forEach((resolvedPromise, index) => {
+        uploadPartsArray.push({
+          ETag: resolvedPromise.headers.etag,
+          PartNumber: index + 1
+        })
+      })
+
+      // (3) Calls the CompleteMultipartUpload endpoint in the backend server
 
       let completeUploadResp = await axios.post(`${this.state.backendUrl}/complete-upload`, {
         params: {
