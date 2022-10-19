@@ -2,20 +2,20 @@ import React, { Component } from 'react'
 import axios from 'axios'
 
 export default class Index extends Component {
-	constructor(props) {
-		super(props)
+  constructor(props) {
+    super(props)
     this.state = {
       selectedFile: null,
       uploadId: '',
       fileName: '',
       backendUrl: 'http://localhost:4000'
     }
-	}
+  }
 
-// ===============================================
-// The fileChangedHandler obtains the file specified in the
-// input field in the form.
-// ===============================================
+  // ===============================================
+  // The fileChangedHandler obtains the file specified in the
+  // input field in the form.
+  // ===============================================
 
   async fileChangedHandler(event) {
     try {
@@ -29,11 +29,11 @@ export default class Index extends Component {
     }
   }
 
-// ===============================================
-// The startUpload function obtains an uploadId generated in the backend
-// server by the AWS S3 SDK. This uploadId will be used subsequently for uploading
-// the individual chunks of the selectedFile.
-// ===============================================
+  // ===============================================
+  // The startUpload function obtains an uploadId generated in the backend
+  // server by the AWS S3 SDK. This uploadId will be used subsequently for uploading
+  // the individual chunks of the selectedFile.
+  // ===============================================
 
   async startUpload(event) {
     try {
@@ -48,26 +48,26 @@ export default class Index extends Component {
         }
       })
 
-      let {uploadId} = resp.data
-      this.setState({uploadId})
+      let { uploadId } = resp.data
+      this.setState({ uploadId })
 
       this.uploadMultipartFile()
-    } catch(err) {
+    } catch (err) {
       console.log(err)
     }
   }
 
-// ===============================================
-// The uploadMultipartFile function splits the selectedFile into chunks
-// of 10MB and does the following:
-// (1) call the backend server for a presigned url for each part,
-// (2) uploads them, and
-// (3) upon completion of all responses, sends a completeMultipartUpload call to the backend server.
-//
-// Note: the AWS SDK can only split one file into 10,000 separate uploads.
-// This means that, each uploaded part being 10MB, each file has a max size of 
-// 100GB.
-// ===============================================
+  // ===============================================
+  // The uploadMultipartFile function splits the selectedFile into chunks
+  // of 10MB and does the following:
+  // (1) call the backend server for a presigned url for each part,
+  // (2) uploads them, and
+  // (3) upon completion of all responses, sends a completeMultipartUpload call to the backend server.
+  //
+  // Note: the AWS SDK can only split one file into 10,000 separate uploads.
+  // This means that, each uploaded part being 10MB, each file has a max size of 
+  // 100GB.
+  // ===============================================
 
   async uploadMultipartFile() {
     try {
@@ -79,8 +79,8 @@ export default class Index extends Component {
       let start, end, blob
 
       for (let index = 1; index < NUM_CHUNKS + 1; index++) {
-        start = (index - 1)*FILE_CHUNK_SIZE
-        end = (index)*FILE_CHUNK_SIZE
+        start = (index - 1) * FILE_CHUNK_SIZE
+        end = (index) * FILE_CHUNK_SIZE
         blob = (index < NUM_CHUNKS) ? this.state.selectedFile.slice(start, end) : this.state.selectedFile.slice(start)
 
         // (1) Generate presigned URL for each part
@@ -102,17 +102,19 @@ export default class Index extends Component {
           { headers: { 'Content-Type': this.state.selectedFile.type } }
         )
         // console.log('   Upload no ' + index + '; Etag: ' + uploadResp.headers.etag)
-        promisesArray.push(uploadResp)
+        promisesArray.push(uploadResp.then(output => {
+          return { ...output, partNumber }
+        }))
       }
 
       let resolvedArray = await Promise.all(promisesArray)
       console.log(resolvedArray, ' resolvedAr')
 
       let uploadPartsArray = []
-      resolvedArray.forEach((resolvedPromise, index) => {
+      resolvedArray.forEach((resolvedPromise) => {
         uploadPartsArray.push({
           ETag: resolvedPromise.headers.etag,
-          PartNumber: index + 1
+          PartNumber: resolvedPromise.PartNumber
         })
       })
 
@@ -128,13 +130,13 @@ export default class Index extends Component {
 
       console.log(completeUploadResp.data, ' Stuff')
 
-    } catch(err) {
+    } catch (err) {
       console.log(err)
     }
   }
 
-	render() {
-		return (
+  render() {
+    return (
       <div>
         <form onSubmit={this.startUpload.bind(this)}>
           <div>
@@ -146,6 +148,6 @@ export default class Index extends Component {
           </div>
         </form>
       </div>
-		)
-	}
+    )
+  }
 }
